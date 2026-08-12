@@ -1,13 +1,22 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Container, Box, Button } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import NotificationCenter from './NotificationCenter';
+import { useAuth } from '../../hooks/useAuth';
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppBar position="sticky" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
@@ -30,6 +39,25 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <Button color="inherit" component={RouterLink} to="/my-tickets">
               Mis Tickets
             </Button>
+            {user ? (
+              <>
+                <Button color="inherit" disabled sx={{ '&.Mui-disabled': { color: 'inherit', opacity: 0.8 } }}>
+                  Hola, {user.name}
+                </Button>
+                <Button color="inherit" onClick={handleLogout}>
+                  Cerrar sesión
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button color="inherit" component={RouterLink} to="/login">
+                  Iniciar sesión
+                </Button>
+                <Button color="inherit" component={RouterLink} to="/register">
+                  Registrarse
+                </Button>
+              </>
+            )}
           </Box>
           <NotificationCenter />
         </Toolbar>

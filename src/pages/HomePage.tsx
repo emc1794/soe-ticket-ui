@@ -15,7 +15,7 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const data = await api.events.getAll();
+        const data = await api.events.list();
         setFeaturedEvents(data.slice(0, 6)); // Mostrar los primeros 6
       } catch (error) {
         console.error('Error fetching events:', error);

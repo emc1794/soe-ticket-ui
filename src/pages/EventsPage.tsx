@@ -37,7 +37,7 @@ const EventsPage: React.FC = () => {
     const fetchEvents = async () => {
       setLoading(true);
       try {
-        const data = await api.events.getAll();
+        const data = await api.events.list();
         setEvents(data);
       } catch (error) {
         console.error('Error fetching events:', error);
@@ -51,22 +51,22 @@ const EventsPage: React.FC = () => {
   const filteredEvents = useMemo(() => {
     return events
       .filter(event => {
-        const matchesSearch = event.title.toLowerCase().includes(search.toLowerCase()) || 
+        const matchesSearch = event.title.toLowerCase().includes(search.toLowerCase()) ||
                              event.artist.toLowerCase().includes(search.toLowerCase());
-        const matchesCity = cityFilter === 'all' || event.venue?.city === cityFilter;
-        const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter;
+        const matchesCity = cityFilter === 'all' || event.city === cityFilter;
+        const matchesCategory = categoryFilter === 'all' || event.metadata.category === categoryFilter;
         return matchesSearch && matchesCity && matchesCategory;
       })
       .sort((a, b) => {
         if (sortBy === 'date') return new Date(a.date).getTime() - new Date(b.date).getTime();
-        if (sortBy === 'price-low') return a.minPrice - b.minPrice;
-        if (sortBy === 'price-high') return b.minPrice - a.minPrice;
+        if (sortBy === 'price-low') return (a.metadata.minPrice ?? 0) - (b.metadata.minPrice ?? 0);
+        if (sortBy === 'price-high') return (b.metadata.minPrice ?? 0) - (a.metadata.minPrice ?? 0);
         return 0;
       });
   }, [events, search, cityFilter, categoryFilter, sortBy]);
 
-  const cities = Array.from(new Set(events.map(e => e.venue?.city).filter(Boolean)));
-  const categories = Array.from(new Set(events.map(e => e.category)));
+  const cities = Array.from(new Set(events.map(e => e.city).filter(Boolean)));
+  const categories = Array.from(new Set(events.map(e => e.metadata.category).filter(Boolean)));
 
   return (
     <Box>

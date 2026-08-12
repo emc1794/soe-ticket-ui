@@ -1,51 +1,45 @@
-export type EventCategory = 'Concierto' | 'Deporte' | 'Conferencia' | 'Teatro' | 'Otro';
+// Domain types mirror the real HTTP contracts of soe-ticket-api (events/identity)
+// and soe-ticket-ordering-service (orders). Fields not returned by either API
+// (pricing, images, seat inventory, notifications, order listing) are either
+// carried in Event.metadata (a free-form JSON column we seeded) or synthesized
+// client-side and clearly treated as such — see CLAUDE.md.
 
-export interface Venue {
-  id: string;
-  name: string;
-  city: string;
-  address: string;
-  capacity: number;
-  image?: string;
-  hasAssignedSeating: boolean;
+export type EventType = 'assigned' | 'general';
+export type EventStatus = 'ACTIVE' | 'CANCELLED';
+
+export interface EventMetadata {
+  minPrice?: number;
+  maxPrice?: number;
+  imageUrl?: string;
+  venueName?: string;
+  category?: string;
+  tags?: string[];
 }
 
 export interface Event {
   id: string;
   title: string;
-  artist: string;
   description: string;
-  date: string;
-  time: string;
-  category: EventCategory;
+  date: string; // ISO datetime
   venueId: string;
-  venue?: Venue;
-  imageUrl: string;
-  minPrice: number;
-  maxPrice: number;
-  status: 'Disponible' | 'Agotado' | 'Pospuesto' | 'Cancelado';
-  tags?: string[];
+  artist: string;
+  city: string;
+  type: EventType;
+  metadata: EventMetadata;
+  status: EventStatus;
 }
 
-export interface TicketType {
+export interface EventSearchFilters {
+  city?: string;
+  artist?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface AuthUser {
   id: string;
-  eventId: string;
+  email: string;
   name: string;
-  price: number;
-  description?: string;
-  availableQuantity: number;
-}
-
-export type SeatStatus = 'available' | 'selected' | 'reserved' | 'sold' | 'accessible';
-
-export interface Seat {
-  id: string;
-  row: string;
-  number: string;
-  section: string;
-  status: SeatStatus;
-  price: number;
-  isAccessible: boolean;
 }
 
 export interface CartItem {
@@ -54,52 +48,50 @@ export interface CartItem {
   eventTitle: string;
   eventDate: string;
   venueName: string;
-  ticketTypeId?: string;
-  ticketTypeName?: string;
-  seatId?: string;
-  seatLabel?: string;
-  price: number;
+  label: string;
+  /** Tokens sent as Order.seatNumbers — real seat labels for assigned events, synthetic tokens for general admission. Length always equals quantity. */
+  seatNumbers: string[];
+  price: number; // per unit
   quantity: number;
 }
 
 export interface Cart {
   items: CartItem[];
   total: number;
-  expiresAt?: number; // Timestamp
+  expiresAt?: number;
 }
+
+export type OrderStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
 
 export interface Order {
   id: string;
   userId: string;
-  items: CartItem[];
-  total: number;
-  status: 'pending' | 'completed' | 'canceled' | 'refunded';
-  createdAt: string;
-  paymentMethod?: string;
-  billingInfo: {
-    name: string;
-    lastName: string;
-    email: string;
-    phone: string;
-  };
+  eventId: string;
+  seatNumbers: string[];
+  amount: number;
+  status: OrderStatus;
 }
 
-export interface Notification {
+export interface LocalOrderLine {
+  label: string;
+  quantity: number;
+  price: number;
+}
+
+/** Order enriched with display info the ordering-service doesn't store, persisted client-side since there is no "list my orders" endpoint. */
+export interface LocalOrder extends Order {
+  eventTitle: string;
+  eventDate: string;
+  venueName: string;
+  lines: LocalOrderLine[];
+  createdAt: string;
+}
+
+export interface AppNotification {
   id: string;
-  userId: string;
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
   isRead: boolean;
   createdAt: string;
-}
-
-export interface Promotion {
-  id: string;
-  code: string;
-  discountType: 'percentage' | 'fixed';
-  value: number;
-  description: string;
-  venueId?: string; // Si es específica de un recinto
-  isActive: boolean;
 }
