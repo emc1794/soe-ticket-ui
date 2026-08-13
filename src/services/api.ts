@@ -5,8 +5,11 @@ import {
   Order,
 } from '../features/types';
 
-const TICKET_API_BASE = import.meta.env.VITE_TICKET_API_URL || 'http://localhost:3000/api/v1';
-const ORDERING_API_BASE = import.meta.env.VITE_ORDERING_API_URL || 'http://localhost:3001/api/v1';
+// Both backend services sit behind a single Kong gateway (see ../kong.yml): it routes
+// /api/v1/identity, /api/v1/events, /api/v1/payment, /api/v1/notification to soe-ticket-api
+// and /api/v1/orders to soe-ticket-ordering-service, all under one host:port. Kong's proxy
+// port is 8000 — 8001 is its Admin API and does not proxy application traffic.
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://100.93.232.89:8000/api/v1';
 
 export class ApiError extends Error {
   constructor(
@@ -18,8 +21,8 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(baseUrl: string, path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${baseUrl}${path}`, {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -43,29 +46,29 @@ async function request<T>(baseUrl: string, path: string, options: RequestInit = 
   return body?.data as T;
 }
 
-// --- Identity (soe-ticket-api) ---
+// --- Identity (soe-ticket-api, via Kong) ---
 
 async function register(email: string, name: string, password: string): Promise<AuthUser> {
-  return request<AuthUser>(TICKET_API_BASE, '/identity/register', {
+  return request<AuthUser>('/identity/register', {
     method: 'POST',
     body: JSON.stringify({ email, name, password }),
   });
 }
 
 async function login(email: string, password: string): Promise<{ token: string; user: AuthUser }> {
-  return request<{ token: string; user: AuthUser }>(TICKET_API_BASE, '/identity/login', {
+  return request<{ token: string; user: AuthUser }>('/identity/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
 }
 
 async function profile(token: string): Promise<AuthUser> {
-  return request<AuthUser>(TICKET_API_BASE, '/identity/profile', {
+  return request<AuthUser>('/identity/profile', {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
 
-// --- Events (soe-ticket-api) ---
+// --- Events (soe-ticket-api, via Kong) ---
 
 async function listEvents(filters?: EventSearchFilters): Promise<Event[]> {
   const params = new URLSearchParams();
@@ -74,7 +77,7 @@ async function listEvents(filters?: EventSearchFilters): Promise<Event[]> {
   if (filters?.startDate) params.set('startDate', filters.startDate);
   if (filters?.endDate) params.set('endDate', filters.endDate);
   const qs = params.toString();
-  return request<Event[]>(TICKET_API_BASE, `/events${qs ? `?${qs}` : ''}`);
+  return request<Event[]>(`/events${qs ? `?${qs}` : ''}`);
 }
 
 async function getEventById(id: string): Promise<Event | undefined> {
@@ -83,7 +86,7 @@ async function getEventById(id: string): Promise<Event | undefined> {
   return events.find((e) => e.id === id);
 }
 
-// --- Orders (soe-ticket-ordering-service) ---
+// --- Orders (soe-ticket-ordering-service, via Kong) ---
 
 interface CreateOrderPayload {
   userId: string;
@@ -93,14 +96,14 @@ interface CreateOrderPayload {
 }
 
 async function createOrder(payload: CreateOrderPayload): Promise<Order> {
-  return request<Order>(ORDERING_API_BASE, '/orders', {
+  return request<Order>('/orders', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
 async function getOrderById(id: string): Promise<Order> {
-  return request<Order>(ORDERING_API_BASE, `/orders/${id}`);
+  return request<Order>(`/orders/${id}`);
 }
 
 /**
